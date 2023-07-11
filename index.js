@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const jwt=require('jsonwebtoken');
+
 const app = express();
 require('dotenv').config();
 const port = process.env.PORT || 4000;
@@ -9,7 +11,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 // const uri = `mongodb+srv://${process.env.SECRET_User}:${process.env.SECRET_PASS}@cluster11.cpm08j1.mongodb.net/?retryWrites=true&w=majority`;
 const uri = 'mongodb+srv://EcommerceSite:xfcyMbY6VWNB6ET5@cluster11.cpm08j1.mongodb.net/?retryWrites=true&w=majority';
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
-
+const jwtToken='6bb5a74f2c2ad905f90d721c1b9def672fc53622532530057f24d08a64e791e4d8f56453dfe8c2d249711a098c6a860ef8bf75ecd4db2a87da11abd5610c5256';
 const stripe=require('stripe')('sk_test_51NEmG3IxzytApYUlezdVCVvSiGKYTMPRcizhPcJbk70FNEUHtQQ4Zo6Oypdn7Jmpir3PLHlhMOx0zLRuvL0dzqhA00ZSSQyNYP')
 const client = new MongoClient(uri, {
   serverApi: {
@@ -18,6 +20,8 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   }
 });
+
+// require('crypto').randomBytes(64).toString('hex')
 
 async function run() {
   try {
@@ -28,6 +32,34 @@ async function run() {
     const products = client.db('emaJohnDB').collection('products');
     const users = client.db('emaJohnDB').collection('users');
     const userProducts = client.db('emaJohnDB').collection('userProducts')
+
+
+
+    // jwt system use
+
+    app.post('/jwt',async(req,res)=>{
+      const user=req.body;
+      console.log(user);
+      const token=jwt.sign(user,jwtToken,{expiresIn:'1h'})
+      res.send({token});
+    })
+
+    const verifyJwt=(req,res,next)=>{
+      const authorization=req.headers.authorization;
+      if(!authorization){
+        return res.status(401).send({error:true,message:'unauthorized access'})
+      }
+      const token=authorization.split(' ')[1]
+      jwt.verify(token,jwtToken,(error,decoded)=>{
+        if(error){
+          return res.status(401).send({error:true,message:'unauthorized access'})
+        }
+        req.decoded=decoded;
+        next()
+      })
+    }
+
+    
     app.get('/products', async (req, res) => {
       const result = await products.find().toArray();
       res.send(result);
@@ -54,7 +86,7 @@ async function run() {
     });
 
 
-    app.get('/products/:id', async (req, res) => {
+    app.get('/product/:id', async (req, res) => {
       const id = req.params.id;
       const result = await products.findOne({ _id: new ObjectId(id) });
       res.send(result);
@@ -119,6 +151,8 @@ async function run() {
           clientSecret:paymentIntent.client_secret
       })
   })
+
+
 
   // const paymentHistory = client.db('emaJohnDB').collection('paymentHistory');
   // app.post('/paymentHistory',async(req,res)=>{
